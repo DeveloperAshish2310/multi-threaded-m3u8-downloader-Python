@@ -3,29 +3,11 @@ import requests
 import subprocess
 import re
 from concurrent.futures import ThreadPoolExecutor
+from process_m3u_links import process_m3u8_data
+
 
 # Step 1: Read the m3u8 file to extract the segment URLs using regex
-
-# Function to read the m3u8 file and extract segment URLs
-def get_m3u8_urls(m3u8_url_or_path):
-    # If the m3u8 file is hosted online (URL)
-    if m3u8_url_or_path.startswith("http"):
-        response = requests.get(m3u8_url_or_path)
-        response.raise_for_status()  # Raise an error if the request fails
-        m3u8_content = response.text
-    else:
-        # If the m3u8 file is local (path)
-        with open(m3u8_url_or_path, 'r') as file:
-            m3u8_content = file.read()
-    
-    # Regex pattern to extract URLs (including both m3u8 and .ts files)
-    url_pattern = re.compile(r'(https?://[^\s]+)')
-    
-    # Find all matching URLs in the m3u8 content
-    urls = url_pattern.findall(m3u8_content)
-    
-    return urls
-
+# Doing in process_m3u_links File
 
 # Step 2: Function to download each video segment
 def download_segment(url, segment_file):
@@ -39,7 +21,7 @@ def download_segment(url, segment_file):
 # Step 3: Main function to download all segments concurrently and merge them
 def download_and_merge_video(m3u8_file, num_threads=4):
     # Step 3.1: Get segment URLs from the m3u8 file
-    urls = get_m3u8_urls(m3u8_file)
+    urls = process_m3u8_data(m3u8_file)
     
     # Step 3.2: Create a temporary directory to store the segments
     temp_dir = 'temp_segments'
@@ -69,13 +51,12 @@ def download_and_merge_video(m3u8_file, num_threads=4):
     print("Merging segments into final video...")
 
     # -- FFMPEG Do not re-encode the video
-    subprocess.run(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file, '-c', 'copy', output_file])
+    subprocess.run(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file, '-c', 'copy', f"first_{output_file}"])
     
     # -- Force ffmpeg to Re-encode the Video
-    # subprocess.run(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file, '-c:v', 'libx264', '-c:a', 'aac', '-strict', 'experimental', output_file])
-
+    # subprocess.run(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file, '-c:v', 'libx264', '-c:a', 'aac', '-strict', 'experimental', f"second_{output_file}"])
     # -- Force ffmpeg to Handle Timestamps Properly:
-    # subprocess.run(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file, '-fflags', '+genpts', '-c', 'copy', output_file])
+    # subprocess.run(['ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file, '-fflags', '+genpts', '-c', 'copy', f"third_{output_file}"])
 
     # Step 3.6: Cleanup: remove temporary files
     print("Cleaning up temporary files...")
@@ -86,7 +67,9 @@ def download_and_merge_video(m3u8_file, num_threads=4):
     print(f"Video saved as {output_file}")
 
 
-# Example usage: Provide the m3u8 file URL or local file path and the number of threads
-m3u8_file = 'video_playlist.m3u8'
-num_threads = 10  # Set the number of threads to use
-download_and_merge_video(m3u8_file, num_threads)
+if __name__ == "__main__":
+    # Example usage: Provide the m3u8 file URL or local file path and the number of threads
+    # m3u8_file = 'nouse/video_playlist.m3u8'
+    m3u8_file = 'u8lmahqjne.m3u8'
+    num_threads = 10  # Set the number of threads to use
+    download_and_merge_video(m3u8_file, num_threads)
